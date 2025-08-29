@@ -186,6 +186,8 @@ void stopMotors() {
   digitalWrite(IN2, LOW);
   analogWrite(ENA, 0);
 }
+![WhatsApp Image 2025-08-28 at 11 42 53 AM](https://github.com/user-attachments/assets/05de043b-9cf9-4096-92e0-1831c76d44dc)
+![WhatsApp Image 2025-08-28 at 11 42 25 AM](https://github.com/user-attachments/assets/c5041b3c-9e9a-4614-b252-8306658be9bb)
 
 Raspberry Pi Code (High-Level Navigation)
 // Raspberry Pi C++ Code using pigpio
@@ -237,6 +239,10 @@ int main() {
 }
 
 Images
+<img width="583" height="674" alt="Screenshot 2025-08-13 102929" src="https://github.com/user-attachments/assets/aaee760d-9ccf-490c-a953-5baaf5eba5f3" />
+<img width="639" height="687" alt="Screenshot 2025-08-13 102945" src="https://github.com/user-attachments/assets/8f85f553-cb48-4d96-ad88-af17b547aa3e" />
+<img width="766" height="583" alt="Screenshot 2025-08-13 103008" src="https://github.com/user-attachments/assets/2e196343-e338-4346-9dd1-a44944375d1b" />
+<img width="907" height="660" alt="Screenshot 2025-08-13 103032" src="https://github.com/user-attachments/assets/6f0098fe-e45d-4c12-802f-31624fc5f4c7" />
 
  Conclusion 
 
