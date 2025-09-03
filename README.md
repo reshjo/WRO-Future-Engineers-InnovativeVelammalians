@@ -1,257 +1,194 @@
-WRO Future Engineers – Innovative Velammalians
-Project Overview
 
-This repository documents the autonomous vehicle prototype developed by Team Innovative Velammalians for the WRO 2025 Future Engineers Category.
-Our vehicle is designed to navigate, detect obstacles, and adapt its driving path using a combination of Arduino Nano (for low-level motor & sensor control) and Raspberry Pi 3 (for high-level decision making).
 
-Team Members
+ # WRO Future Engineers – Innovative Velammalians
 
-Reena Shri D
+This repository documents our team's entry for the **World Robot Olympiad – Future Engineers** category. Our autonomous self-driving prototype demonstrates hardware-software integration, timed steering, and novel chassis design.
 
-Shrinidhi RM
+---
 
-Joshna Sarath
+## Team
 
-Hardware Components
+**Team Name:** *Innovative Velammalians*
 
-Main Controller: Raspberry Pi 3 with MicroSD card (OS + Programs)
+**Members:**
 
-Motor & Sensor Controller: Arduino Nano with prototyping shield
+* Reena Shri D
+* Shrinidhi RM
+* Joshna Sarath
 
-Camera Module: Wide-angle lens
+**Coach:** Mrs. Reena Manopriya
 
-DC Motor & Motor Driver (L298N)
+---
 
-Servo Motor for steering
+## Hardware Components
 
-IMU Sensor (MPU6050)
+* Arduino Uno – Main microcontroller
+* L298N Motor Driver – Controls DC motors
+* DC Motors – Drive propulsion
+* Servo Motor – Steering mechanism
+* Li-Po Battery – Power supply
+* Custom CAD-designed chassis
 
-2 Ultrasonic Sensors for distance detection
+---
 
-2 Analog Line Sensors for lane detection
+## Chassis Design
 
-Rotary Encoder for wheel movement tracking
+### 3D Perspective View
 
-External USB Battery Pack (powering Raspberry Pi & Arduino)
+<img src="IMG_0263.jpeg" alt="3D Chassis View" width="600"/> 
 
-Additional Battery for motor supply
+### Top View
 
-System Architecture
+<img src="IMG_0261.jpeg" alt="Chassis Top View" width="600"/> 
 
-Arduino Nano handles:
+### Bottom View
 
-Ultrasonic sensors
+<img src="IMG_0260.jpeg" alt="Chassis Bottom View" width="600"/> 
 
-IMU readings
+---
 
-Line sensors
+## Demonstration Video
 
-Encoder counting
+[Watch on YouTube](https://youtu.be/1QLYZ_jNva8?si=0_mQt1Ktheclp281)
 
-Direct motor actuation & steering servo
+---
 
-Raspberry Pi handles:
+## Source Code
 
-Higher-level navigation logic
+The Arduino sketch controlling the DC motor and servo steering is provided below. It executes timed right turns 12 times, followed by a final forward motion before stopping.
 
-Obstacle avoidance strategy
+**File:** `code/main.ino`
 
-Control signals to Arduino
-
-LED status indicators and button input
-
-Features
-
-Obstacle detection & avoidance using ultrasonic sensors
-
-Smooth servo steering with calibrated center trim
-
-Line following via analog sensors
-
-Encoder-based speed/distance tracking
-
-IMU-based motion stability check
-
-Autonomous navigation with safety stop mechanism
-
-Multi-power supply system (dedicated motor & logic power)
-
-Arduino Nano Code (Low-Level Control)
-// Arduino Nano Code
-#include <NewPing.h>
+```cpp
+#include <AFMotor.h>
 #include <Servo.h>
-#include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_MPU6050.h>
 
-#define TRIGGER_PIN1 2
-#define ECHO_PIN1 3
-#define TRIGGER_PIN2 4
-#define ECHO_PIN2 5
-#define MAX_DISTANCE 200
-
-#define ENA 9
-#define IN1 7
-#define IN2 8
-
-#define SERVO_PIN 6
-
-#define LINE_SENSOR_LEFT A0
-#define LINE_SENSOR_RIGHT A1
-
-#define ENCODER_A 10
-#define ENCODER_B 11
-
-NewPing sonar1(TRIGGER_PIN1, ECHO_PIN1, MAX_DISTANCE);
-NewPing sonar2(TRIGGER_PIN2, ECHO_PIN2, MAX_DISTANCE);
+// DC Motor on M3
+AF_DCMotor motor(3); 
 Servo steering;
-Adafruit_MPU6050 mpu;
 
-volatile int encoderCount = 0;
+// Timing and logic
+unsigned long previousMillis = 0;
+const unsigned long interval = 5000;  // 5 seconds between turns
+bool turning = false;
+int turnCount = 0;
+const int maxTurns = 12;
+bool finalForwardDone = false;
+bool started = false;
+bool waitingForTrigger = true;
 
-void encoderISR() { encoderCount++; }
+// Button pin
+const int triggerPin = A5;
 
 void setup() {
+  // Start Serial Monitor
   Serial.begin(9600);
+  Serial.println("Robot Initialized. Waiting for button press on A5...");
 
-  pinMode(ENA, OUTPUT);
-  pinMode(IN1, OUTPUT);
-  pinMode(IN2, OUTPUT);
+  pinMode(triggerPin, INPUT_PULLUP);  // Use internal pull-up resistor
 
-  steering.attach(SERVO_PIN);
-
-  pinMode(LINE_SENSOR_LEFT, INPUT);
-  pinMode(LINE_SENSOR_RIGHT, INPUT);
-
-  pinMode(ENCODER_A, INPUT_PULLUP);
-  pinMode(ENCODER_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_A), encoderISR, RISING);
-
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
-    while (1) { delay(10); }
-  }
-  Serial.println("MPU6050 Found!");
+  motor.setSpeed(255);       
+  steering.attach(9);
+  steering.write(90);  // Center
 }
 
 void loop() {
-  unsigned int distance1 = sonar1.ping_cm();
-  unsigned int distance2 = sonar2.ping_cm();
-
-  int leftLine = analogRead(LINE_SENSOR_LEFT);
-  int rightLine = analogRead(LINE_SENSOR_RIGHT);
-
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-
-  Serial.print("Distances: ");
-  Serial.print(distance1);
-  Serial.print(" cm, ");
-  Serial.print(distance2);
-  Serial.println(" cm");
-
-  Serial.print("Line Sensors: L=");
-  Serial.print(leftLine);
-  Serial.print(" R=");
-  Serial.println(rightLine);
-
-  Serial.print("IMU Accel X: ");
-  Serial.print(a.acceleration.x);
-  Serial.print(" Y: ");
-  Serial.print(a.acceleration.y);
-  Serial.print(" Z: ");
-  Serial.println(a.acceleration.z);
-
-  Serial.print("Encoder Count: ");
-  Serial.println(encoderCount);
-
-  if (distance1 > 20 && distance2 > 20) {
-    moveForward(150);
-  } else {
-    stopMotors();
+  // Wait for button press (LOW when pressed due to INPUT_PULLUP)
+  if (waitingForTrigger) {
+    if (digitalRead(triggerPin) == LOW) {
+      delay(50); // Debounce
+      if (digitalRead(triggerPin) == LOW) {
+        Serial.println("Button press detected! Starting motion...");
+        started = true;
+        waitingForTrigger = false;
+        motor.run(FORWARD);
+        previousMillis = millis();
+      }
+    }
+    return; // Wait until button is pressed
   }
 
-  delay(100);
-}
+  if (!started) return;
 
-void moveForward(int speed) {
-  digitalWrite(IN1, HIGH);
-  digitalWrite(IN2, LOW);
-  analogWrite(ENA, speed);
-  steering.write(90);
-}
+  unsigned long currentMillis = millis();
 
-void stopMotors() {
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, LOW);
-  analogWrite(ENA, 0);
-}
-![WhatsApp Image 2025-08-28 at 11 42 53 AM](https://github.com/user-attachments/assets/05de043b-9cf9-4096-92e0-1831c76d44dc)
-![WhatsApp Image 2025-08-28 at 11 42 25 AM](https://github.com/user-attachments/assets/c5041b3c-9e9a-4614-b252-8306658be9bb)
+  if (!turning && currentMillis - previousMillis >= interval && turnCount < maxTurns) {
+    previousMillis = currentMillis;
+    turning = true;
 
-Raspberry Pi Code (High-Level Navigation)
-// Raspberry Pi C++ Code using pigpio
-#pragma GCC optimize("Ofast")
-#pragma GCC optimize("unroll-loops")
+    turnCount++;
+    Serial.print("Turn #");
+    Serial.print(turnCount);
+    Serial.println(" → Turning right...");
 
-#include <pigpio.h>
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <vector>
-#include <algorithm>
-#include <cmath>
+    // Turn right
+    steering.write(30);
+    delay(1500);  // Hold for 1.5s
 
-// Pin definitions, parameters, helper functions here (LED, Motors, Servo, Ultrasonic)...
-
-int main() {
-  setup_gpio();
-
-  // Idle: blue LED, wait for button press
-  LED_rgb(0, 0, 255);
-  int btn_cnt = 0;
-  while (btn_cnt < 10) { if (is_button_down()) btn_cnt++; else btn_cnt = 0; sleep_ms(20); }
-
-  // Start autonomous navigation
-  LED_rgb(0, 255, 0);
-  servo_set_angle(0);
-  sleep_ms(150);
-
-  while (true) {
-    float d = median_distance_cm(3, 20);
-    if (d < AVOID_DIST_CM) {
-      // Obstacle avoidance logic: scan left/right, reverse if necessary
-      // Uses servo sweep + motor control
-    }
-    else {
-      // Clear path: move forward
-      set_motors(CRUISE_SPEED, CRUISE_SPEED);
-    }
-    sleep_ms(15);
+    // Back to center
+    steering.write(90);
+    Serial.println("Returned to center.");
+    turning = false;
   }
 
-  // Shutdown
-  motors_stop();
-  servo_set_angle(0);
-  LED_rgb(0, 0, 255);
-  gpioTerminate();
-  return 0;
+  // After 12 turns, move straight for 2 sec and stop
+  if (turnCount >= maxTurns && !finalForwardDone) {
+    Serial.println("Completed 12 turns. Moving forward for 2 more seconds...");
+    delay(2000);                // Final forward motion
+    motor.run(RELEASE);         // Stop motor
+    steering.detach();          // Power off servo
+    Serial.println("Robot stopped completely.");
+    finalForwardDone = true;
+  }
 }
+```
 
-Images
-<img width="583" height="674" alt="Screenshot 2025-08-13 102929" src="https://github.com/user-attachments/assets/aaee760d-9ccf-490c-a953-5baaf5eba5f3" />
-<img width="639" height="687" alt="Screenshot 2025-08-13 102945" src="https://github.com/user-attachments/assets/8f85f553-cb48-4d96-ad88-af17b547aa3e" />
-<img width="766" height="583" alt="Screenshot 2025-08-13 103008" src="https://github.com/user-attachments/assets/2e196343-e338-4346-9dd1-a44944375d1b" />
-<img width="907" height="660" alt="Screenshot 2025-08-13 103032" src="https://github.com/user-attachments/assets/6f0098fe-e45d-4c12-802f-31624fc5f4c7" />
+---
 
- Conclusion 
+## Execution Instructions
 
-Limitations 
+1. **Hardware Setup**
 
-Obstacle avoidance is limited to stopping only. 
+   * Assemble the chassis and mount the DC motors, servo motor, and driver module.
+   * Connect components according to the wiring schematic.
+   * Power the system using a Li-Po battery.
 
-Line sensors sensitive to lighting changes. 
+2. **Software Setup**
 
-Additional battery adds weight. 
+   * Install the Arduino IDE.
+   * Add required libraries: `AFMotor.h` and `Servo.h`.
+   * Upload the sketch from `code/main.ino` to the Arduino Uno.
 
- 
+3. **Operation**
+
+   * Place the vehicle on a flat surface.
+   * Press the trigger button connected to pin **A5** to start motion.
+   * The robot will execute 12 timed right turns and then move forward for 2 seconds before stopping.
+
+---
+
+## Project Roadmap
+
+* Completed: CAD chassis design
+* Completed: Hardware assembly
+* Completed: Initial motion testing
+* In Progress: Vision & sensor integration
+* Pending: Final optimization and competition readiness
+
+---
+
+## Acknowledgements
+
+We gratefully acknowledge:
+
+* The **World Robot Olympiad** organizers
+* Our coach and institution for technical guidance
+* Our team members for their dedication and collaboration
+
+
+
+Attachments area
+Preview YouTube video WRO Future Engineers | Open Challenge | 2025
+
+
+
